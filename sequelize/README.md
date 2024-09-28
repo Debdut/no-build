@@ -29,7 +29,7 @@ I spent the past week reading and patching each of these separately, then togeth
    Serve the project using a local server, and open it in your browser, and open the console.
 
     ```bash
-    go install github.com/debdut/golive
+    go install github.com/debdut/golive@latest
     golive -H "Cross-Origin-Opener-Policy:same-origin,Cross-Origin-Embedder-Policy:require-corp"
     ```
 
