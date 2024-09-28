@@ -1,0 +1,4 @@
+https://github.com/jlongster/absurd-sql
+https://github.com/jlongster/sql.js
+https://gitlab.com/catamphetamine/sequelize-browser
+https://gitlab.com/catamphetamine/sql.js-as-sqlite3
