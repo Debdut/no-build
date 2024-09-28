@@ -21,3 +21,5 @@ In conclusion, no build templates offer a streamlined approach to development, a
 
 1. [Absurd SQL](/absurd-sql/)
    - A writeable database on the web, based on SQLite, runs on IndexedDB.
+2. [Sequelize](/sequelize/)
+   - A fully functional ORM, on SQLite that runs on IndexedDB.
