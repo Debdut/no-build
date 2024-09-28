@@ -1,4 +1,7 @@
 import EventEmitter from '/vendor/event-emitter.js'
+import initSqlJs from '/vendor/sql.js/sql-wasm.js';
+import { SQLiteFS } from '/vendor/absurd-sql/index.js';
+import IndexedDBBackend from '/vendor/absurd-sql/indexeddb-backend.js';
 
 // https://timnew.me/blog/2014/06/23/process-nexttick-implementation-in-browser/
 function getNextTickFunction() {
@@ -46,9 +49,14 @@ function getNextTickFunction() {
 
 let config = {}
 
-function configure({ initSqlJs, wasmFileBaseUrl }) {
-	config.initSqlJs = initSqlJs
-	config.wasmFileBaseUrl = wasmFileBaseUrl
+function configure({ filePath }) {
+	// split the file path into the directory and filename
+	const filePathParts = filePath.split('/')
+	const fileName = filePathParts[filePathParts.length - 1]
+	const dirPath = filePath.substring(0, filePath.length - fileName.length)
+	config.fileName = fileName
+	config.dirPath = dirPath
+	config.filePath = filePath
 }
 
 // `sqlite3`'s `Database` interface:
@@ -114,9 +122,6 @@ class Database extends EventEmitter {
 		// * By calling `.config()` static function with a `wasmFileBaseUrl` parameter.
 		// * By setting `window.SQL_JS_WASM_FILE_BASE_URL` global variable.
 		//
-		const sqlJsWasmFileBaseUrl = config.wasmFileBaseUrl || (typeof window !== 'undefined' ? window.SQL_JS_WASM_FILE_BASE_URL : undefined)
-
-		const isNodeJs = (typeof process !== 'undefined') && (process.release.name === 'node')
 
 		const onError = (error) => {
 			if (callback) {
@@ -140,20 +145,7 @@ class Database extends EventEmitter {
 			}
 		}
 
-		if (!isNodeJs) {
-			if (!sqlJsWasmFileBaseUrl) {
-				return onError(new Error('The base URL for `sql.js` `*.wasm` files is not configured'))
-			}
-			if (sqlJsWasmFileBaseUrl[sqlJsWasmFileBaseUrl.length - 1] !== '/') {
-				return onError(new Error('The base URL for `sql.js` `*.wasm` files must end with a "/"'))
-			}
-		}
-
-		const initSqlJsPromise = config.initSqlJs ? Promise.resolve(config.initSqlJs) : (
-			isNodeJs ? import('sql.js').then(_ => _.default) : (
-				typeof window !== 'undefined' ? Promise.resolve(window.initSqlJs) : Promise.reject(new Error('`window` is not defined'))
-			)
-		)
+		const initSqlJsPromise = Promise.resolve(initSqlJs)
 
 		initSqlJsPromise.then((initSqlJs) => {
 			if (!initSqlJs) {
@@ -168,10 +160,19 @@ class Database extends EventEmitter {
 				//
 				// May be somehow related: https://github.com/sql-js/sql.js/issues/528
 				//
-				locateFile: isNodeJs ? undefined : filename => `${sqlJsWasmFileBaseUrl}${filename}`
+				locateFile: file => file
 			}).then((SQL) => {
+				const sqlFS = new SQLiteFS(SQL.FS, new IndexedDBBackend());
+    			SQL.register_for_idb(sqlFS);
+
+				SQL.FS.mkdir(config.dirPath);
+    			SQL.FS.mount(sqlFS, {}, config.dirPath);
 				// Create a database.
-				this.database = new SQL.Database()
+				this.database = new SQL.Database(config.filePath, { filename: true });
+				this.database.exec(`
+					PRAGMA page_size=8192;
+					PRAGMA journal_mode=MEMORY;
+				  `);
 				onSuccess()
 			}, onError)
 		}, onError)

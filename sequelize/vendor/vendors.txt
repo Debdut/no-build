@@ -2,3 +2,4 @@ https://github.com/jlongster/absurd-sql
 https://github.com/jlongster/sql.js
 https://gitlab.com/catamphetamine/sequelize-browser
 https://gitlab.com/catamphetamine/sql.js-as-sqlite3
+https://unpkg.com/sequelize-browser@6.1.3/sequelize.js
