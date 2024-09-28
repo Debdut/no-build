@@ -56,9 +56,9 @@ User.sync().then(() => {
 Check the browser console for output.
 
 ## How it Works
-- **absurd-sql**: Handles translating the SQLite database to work over IndexedDB.
-- **Sequelize**: A powerful ORM that handles database queries and model definitions.
-- **sql.js**: A compiled version of SQLite that runs in the browser as WebAssembly.
+- [absurd-sql](https://github.com/jlongster/absurd-sql): Handles translating the SQLite database to work over IndexedDB.
+- [Sequelize](https://github.com/sequelize/sequelize): A powerful ORM that handles database queries and model definitions.
+- [sql.js](https://github.com/sql-js/sql.js): A compiled version of SQLite that runs in the browser as WebAssembly.
 
 The magic happens when these libraries are patched together. Sequelize communicates with the SQLite database (via sql.js), and absurd-sql ensures that the database can be persisted and queried through IndexedDB.
 
@@ -67,7 +67,3 @@ If you want to dive into the code or make improvements, feel free to fork the re
 
 ## License
 [MIT](LICENSE)
-
----
-
-This README covers the essentials and guides users to get started with the project.
