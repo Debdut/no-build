@@ -1,124 +1,66 @@
 package main
 
 import (
-	"archive/zip"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"path/filepath"
-	"strings"
-)
 
-const (
-	defaultRepo = "debdut/no-build"
-	apiURL      = "https://api.github.com/repos/%s/zipball"
+	"github.com/debdut/no-build/nobuild/pkg/template"
+	"github.com/debdut/no-build/nobuild/pkg/vendor"
 )
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: nobuild <template> or nobuild <repo> <template>")
+		fmt.Println("Usage: nobuild <command> [<args>]")
 		os.Exit(1)
 	}
 
-	var repo, template string
-	if len(os.Args) == 2 {
-		repo = defaultRepo
-		template = os.Args[1]
-	} else {
-		repo = os.Args[1]
-		template = os.Args[2]
-	}
+	command := os.Args[1]
 
-	url := fmt.Sprintf(apiURL, repo)
-	zipFile := "repo.zip"
-
-	// Download the repository
-	if err := downloadFile(url, zipFile); err != nil {
-		fmt.Printf("Error downloading repository: %v\n", err)
+	switch command {
+	case "template":
+		handleTemplateCommand(os.Args[2:])
+	case "vendor":
+		vendor.Vendor()
+	case "unvendor":
+		vendor.Unvendor()
+	default:
+		fmt.Println("Unknown command:", command)
 		os.Exit(1)
 	}
-	defer os.Remove(zipFile)
-
-	// Extract the specific template folder
-	if err := extractTemplate(zipFile, template); err != nil {
-		fmt.Printf("Error extracting template: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("Template '%s' downloaded successfully.\n", template)
 }
 
-func downloadFile(url, filepath string) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
+func handleTemplateCommand(args []string) {
+	if len(args) < 1 {
+		fmt.Println("Usage: nobuild template <list|<template>|<repo> <template>>")
+		os.Exit(1)
 	}
-	defer resp.Body.Close()
 
-	out, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
+	subcommand := args[0]
 
-	_, err = io.Copy(out, resp.Body)
-	return err
-}
-
-func extractTemplate(zipFile, template string) error {
-	reader, err := zip.OpenReader(zipFile)
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-
-	if template == "." {
-		for _, file := range reader.File {
-			if file.FileInfo().IsDir() {
-				os.MkdirAll(file.Name, os.ModePerm)
-				continue
-			}
-
-			if err := extractFile(file, file.Name); err != nil {
-				return err
-			}
+	switch subcommand {
+	case "list":
+		repo := template.DefaultRepo
+		if len(args) > 1 {
+			repo = args[1]
+		}
+		if err := template.ListTemplates(repo); err != nil {
+			fmt.Printf("Error listing templates: %v\n", err)
+			os.Exit(1)
+		}
+	default:
+		var repo, templateName string
+		if len(args) == 1 {
+			repo = template.DefaultRepo
+			templateName = args[0]
+		} else {
+			repo = args[0]
+			templateName = args[1]
 		}
 
-		return nil
-	}
-
-	for _, file := range reader.File {
-		path := strings.Split(file.Name, string(filepath.Separator))
-		if len(path) > 1 && path[1] == template {
-			targetPath := filepath.Join(path[1:]...)
-			if file.FileInfo().IsDir() {
-				os.MkdirAll(targetPath, os.ModePerm)
-				continue
-			}
-
-			if err := extractFile(file, targetPath); err != nil {
-				return err
-			}
+		err := template.DownloadTemplate(repo, templateName)
+		if err != nil {
+			fmt.Printf("Error downloading template: %v\n", err)
+			os.Exit(1)
 		}
 	}
-
-	return nil
-}
-
-func extractFile(file *zip.File, targetPath string) error {
-	reader, err := file.Open()
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-
-	targetFile, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-	if err != nil {
-		return err
-	}
-	defer targetFile.Close()
-
-	_, err = io.Copy(targetFile, reader)
-	return err
 }
